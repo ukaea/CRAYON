@@ -1,0 +1,27 @@
+[data_sources.imas]
+uri = "imas:hdf5?path=./tests/integration/circular/eccd/input/imas"
+occurrence_core_profiles = 0
+occurrence_equilibrium = 0
+
+[coordinates]
+
+[magnetic_field_t]
+topology = "tokamak"
+source = "imas"
+
+[kinetic.electron_density_per_m3]
+source = "imas"
+
+[kinetic.electron_temperature_ev]
+source = "imas"
+
+[kinetic.effective_charge]
+source = "constant"
+coordinate_system = "CARTESIAN"
+constant_value = 1.0
+
+[limiters.bounding_box]
+source = 'imas'
+shape = 'bounding_box_2d'
+effect = "reflect_specular"
+extinction_coefficient_nepers = 0.0

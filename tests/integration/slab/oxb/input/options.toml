@@ -1,0 +1,27 @@
+[rays]
+max_ray_nodes = 100
+max_ray_children = 5
+max_generations = 2
+max_optical_depth = 23.0
+max_reflections = 1
+min_power_fraction_new_ray = 0.001
+
+[integrator]
+solver_type = "EXPLICIT"
+fidelity = "MEDIUM"
+max_timestep = 1000.0
+initial_timestep = 0.0
+timestep_controller = "PI_42"
+norm = "HARRIER"
+
+[integrator.explicit]
+solver = "RK45_TSITSORAS"
+max_iterations = 32
+
+[integrator.implicit]
+solver = "BACKWARDS_EULER"
+max_iterations = 32
+
+[integrator.hybrid]
+step_failure_threshold = 0.25
+step_failure_window = 20

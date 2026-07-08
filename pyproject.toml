@@ -1,0 +1,199 @@
+[project]
+name = "crayon"
+description = "General purpose microwave ray tracer for fusion plasmas specialised for electron Bernstein waves"
+version = "1.1.1"
+readme = "README.md"
+authors = [
+    {name = "Thomas Wilson"},
+    {name = "Simon Freethy"},
+    {name = "Bodhi Biswas"},
+    {name = "Lou Holland"},
+    {name = "David Speirs"},
+    {name = "Roddy Vann"},
+    {name = "Caleb Hopkins"},
+    {name = "Felicity Maiden"},
+    {name = "Johnathan Carrotte"},
+]
+maintainers = [
+    {name = "Thomas Wilson", email="thomas.wilson@ukaea.uk"}
+]
+license = "MIT"
+license-files = [
+    "LICENSE"
+]
+keywords = ["plasma", "microwave", "fusion", "Bernstein", "ray", "tracing"]
+classifiers = [
+    "Programming Language :: Python",
+    "Development Status :: 3 - Alpha",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Private :: Do Not Upload"
+]
+
+requires-python = ">=3.11"
+dependencies = [
+    "cerberus==1.3.8",
+    "certifi==2023.7.22",
+    "cftime==1.6.4",
+    "contourpy==1.2.1",
+    "fonttools==4.61.1",
+    "imas-core>=5.4.3",
+    "imas-python>=2.2.0",
+    "iniconfig==2.0.0",
+    "joblib>=1.5.3",
+    "matplotlib==3.8.2",
+    "netcdf4>=1.7.1.post2",
+    "numpy<=1.26.2",
+    "packaging==23.2",
+    "pip==23.2.1",
+    "pluggy==1.3.0",
+    "pyaml>=26.2.1",
+    "scikit-learn==1.4.0",
+    "scikit-optimize>=0.10.2",
+    "scipy==1.11.4",
+    "toml>=0.10.2",
+]
+
+[project.scripts]
+crayon = "crayon.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.1,<0.11.0",]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+minversion = "7.4.3"
+addopts = "--import-mode=importlib --cov --cov-report=html"
+testpaths = [
+    "tests/unit"
+]
+
+[tool.coverage.run]
+branch = true
+source = ["crayon"]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+]
+
+ignore_errors = true
+skip_covered = true
+skip_empty = true
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 79
+output-format= "concise"
+exclude = [
+    ".git",
+    "__pycache__",
+    "documentation",
+    ".env",
+    ".idea",
+    ".pytest_cache",
+    "htmlcov",
+    "generated_data",
+]
+
+[tool.ruff.format]
+preview = true
+
+[tool.ruff.lint]
+preview = true
+select = ["ALL"]
+ignore = [
+    "ANN",     # type annotations
+    "EM",      # string in error messages
+    "B019",    # using cache memory leaks
+    "COM812",  # enforce trailing comma, disagrees with black/ruff format
+    "D200",    # docs stuff
+    "D203",
+    "D205",
+    "D301",
+    "D400",
+    "D401",
+    "DOC502",  # Omit non-explicit exceptions from docstrings
+    "DTZ005",  # datetime timezone arg
+    "FIX002",  # Line contains todo
+    "PLW1514", # Specify file open encoding
+    "PTH123",  # use Path.open
+    "RUF052",  # not dummy variables just private
+    "RUF067",  # things in init
+    "TRY003",  # put error messages in error class
+    "FURB152",  # 3.14 != pi
+    # should remove
+    "CPY001",  # Missing copywrite notice.
+    "PLR0915",  # Too many statements.
+]
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+known-first-party = ["crayon"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "S101", # Ignore use of assert in unit tests.
+    "SLF001", # Ignore private member access in unit tests.
+]
+"src/crayon/dispersion/fully_relativistic.py" = ["ALL"]  # Remove this.
+
+[tool.ruff.lint.pylint]
+# These should be made stricter
+max-args = 30
+max-statements = 73
+max-returns = 12
+max-branches = 23
+max-public-methods = 38
+max-bool-expr = 6
+max-locals = 48
+max-nested-blocks = 7
+
+[tool.ruff.lint.flake8-copyright]
+notice-rgx = "(?i)# SPDX-FileCopyrightText:\\s\\d{4}(-(\\d{4}|present))*"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 79
+
+[dependency-groups]
+dev = [
+    "mock>=5.1.0",
+    "pre-commit>=4.6.0",
+    "pytest>=7.4.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.7",
+]

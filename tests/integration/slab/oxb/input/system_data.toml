@@ -1,0 +1,47 @@
+[data_sources]
+
+[coordinates]
+
+[magnetic_field_t]
+topology = "simple"
+source = "ramp"
+scale_factor = 1.0
+coordinate_system = "CARTESIAN"
+origin = [ 0.8, 0.0, 0.0,]
+direction = [ 1.0, 0.0, 0.0,]
+y0 = [ 0.0, 0.268, 0.0,]
+y1 = [ 0.0, 0.358, 0.0,]
+ramp_width = 0.2
+smoothness = 2
+
+[kinetic.electron_density_per_m3]
+source = "ramp"
+scale_factor = 1.0
+coordinate_system = "CARTESIAN"
+origin = [ 0.2, 0.0, 0.0,]
+direction = [ 1.0, 0.0, 0.0,]
+y0 = 0.0
+y1 = 2.480885212230088e+18
+ramp_width = 0.3
+smoothness = 2
+
+[kinetic.electron_temperature_ev]
+source = "constant"
+scale_factor = 1.0
+coordinate_system = "CARTESIAN"
+constant_value = 100.0
+
+[kinetic.effective_charge]
+source = "constant"
+scale_factor = 1.0
+coordinate_system = "CARTESIAN"
+constant_value = 1.0
+
+[limiters.bounding_box]
+extinction_coefficient_nepers = 0.0
+effect = "STOP"
+source = "analytic"
+shape = "bounding_box_2d"
+coordinate = "xy"
+x_limits = [ 0.0, 1.0,]
+y_limits = [ -0.1, 1.0,]

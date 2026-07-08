@@ -1,0 +1,31 @@
+angle_format = "RADIANS"
+
+[ray_1]
+time_ns = 0.0
+frequency_ghz = 1.0
+position = [0.8, 0.1, 0.0]
+coordinate_system_position = "CARTESIAN"
+refractive_index_source = "components"
+refractive_index = [1.0, 0.5, 0.2]
+coordinate_system_refractive_index = "CARTESIAN"
+holonomic = true
+polarisation_source = "wave_mode"
+wave_mode = "O"
+power_w = 1.0
+beam_waist_radius_m = 0.05
+n_radial_zones = 1
+
+[ray_2]
+time_ns = 0.0
+frequency_ghz = 1.0
+position = [0.8, 0.1, 0.0]
+coordinate_system_position = "CARTESIAN"
+refractive_index_source = "components"
+refractive_index = [0.760426, 0.500876, 0.413352]
+coordinate_system_refractive_index = "CARTESIAN"
+holonomic = true
+polarisation_source = "wave_mode"
+wave_mode = "O"
+power_w = 1.0
+beam_waist_radius_m = 0.05
+n_radial_zones = 1

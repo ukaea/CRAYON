@@ -1,0 +1,16 @@
+angle_format = "RADIANS"
+
+[ray_1]
+time_ns = 0.0
+frequency_ghz = 32.0
+position = [ 1.9, 0.0, 0.0,]
+coordinate_system_position = "CYLINDRICAL"
+refractive_index_source = "components"
+refractive_index = [-0.8, 0.0, 0.6]
+coordinate_system_refractive_index = 'cartesian'
+holonomic = true
+polarisation_source = "wave_mode"
+wave_mode = "O"
+power_w = 1.0
+beam_waist_radius_m = 0.05
+n_radial_zones = 1

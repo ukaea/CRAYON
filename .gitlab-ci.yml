@@ -1,0 +1,35 @@
+# Run pipelines for commits / merges to main branches or manual.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+    - when: never
+
+stages:
+  - test
+
+unit-tests:
+  stage: test
+  tags:
+    - freia
+  script:
+    - . /etc/profile
+    - module use /common/software/easybuild/modules/all
+    - module load IMAS-AL-Python/5.4.0-foss-2023b-DD-3.42.0
+    - module load netcdf4-python/1.7.1.post2-foss-2023b
+    - module load scikit-learn/1.4.0-gfbf-2023b
+    - module load Tkinter/3.11.5-GCCcore-13.2.0
+    - module load matplotlib/3.8.2-gfbf-2023b
+    # Install uv.
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    # Add to PATH.
+    - source $HOME/.local/bin/env
+    - uv --version
+    # Until imas-core PyPI version compatible with Freia need to ignore it.
+    # Also prevent sync when running commands.
+    - uv sync --all-extras --no-install-package imas-core
+    - uv run --no-sync python -c "import crayon; print(crayon.__version__)"
+    - uv run --no-sync ruff check
+    - uv run --no-sync ruff format --check
+    - uv run --no-sync pytest

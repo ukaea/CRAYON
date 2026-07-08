@@ -1,0 +1,3 @@
+"""
+Objects representing curvilinear coordinates.
+"""

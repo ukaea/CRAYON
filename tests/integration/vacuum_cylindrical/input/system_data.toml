@@ -1,0 +1,33 @@
+[data_sources]
+
+[coordinates]
+
+[magnetic_field_t]
+topology = "simple"
+source = "constant"
+coordinate_system = "CARTESIAN"
+constant_value = [0.0, 0.0, 0.0]
+
+[kinetic.electron_density_per_m3]
+source = "constant"
+coordinate_system = "CARTESIAN"
+constant_value = 0.0
+
+[kinetic.electron_temperature_ev]
+source = "constant"
+coordinate_system = "CARTESIAN"
+constant_value = 0.0
+
+[kinetic.effective_charge]
+source = "constant"
+coordinate_system = "CARTESIAN"
+constant_value = 0.0
+
+[limiters.bounding_box]
+extinction_coefficient_nepers = 0.1
+effect = "REFLECT_SPECULAR"
+source = "analytic"
+shape = "bounding_box_2d"
+coordinate = "rz"
+x_limits = [1.0, 2.0]
+y_limits = [-0.5, 0.5]

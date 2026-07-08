@@ -1,0 +1,15 @@
+angle_format = "RADIANS"
+
+[ray_1]
+time_ns = 0.0
+frequency_ghz = 10.0
+position = [0.1, 0.0, 0.0]
+coordinate_system_position = "CARTESIAN"
+refractive_index_source = "n_parallel"
+n_parallel = 0.655
+angle_perp = 0.0
+polarisation_source = "wave_mode"
+wave_mode = "O"
+power_w = 1.0
+beam_waist_radius_m = 0.05
+n_radial_zones = 1

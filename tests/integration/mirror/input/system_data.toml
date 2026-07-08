@@ -1,0 +1,29 @@
+[data_sources.netcdf]
+filepath = "./tests/integration/mirror/input/plasma_data.nc"
+
+[coordinates]
+
+[magnetic_field_t]
+topology = "simple"
+source = "netcdf"
+
+[kinetic.electron_density_per_m3]
+source = "netcdf"
+scale_factor = 1.0
+
+[kinetic.electron_temperature_ev]
+source = "netcdf"
+scale_factor = 1.0
+
+[kinetic.effective_charge]
+source = "netcdf"
+scale_factor = 1.0
+
+[limiters.bounding_box]
+extinction_coefficient_nepers = 0.0
+effect = "STOP"
+source = "analytic"
+shape = "bounding_box_2d"
+coordinate = "rz"
+x_limits = [0.0, 2.0]
+y_limits = [-1.5, 1.5]

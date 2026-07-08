@@ -1,0 +1,1 @@
+crayon --info tests/integration/cli/output/new plot_single ray_1-0-0 0.0 --plasma --hamiltonian --power --xy

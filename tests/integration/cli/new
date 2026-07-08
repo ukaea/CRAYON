@@ -1,0 +1,1 @@
+crayon tests/integration/cli/output/new --info --overwrite new
