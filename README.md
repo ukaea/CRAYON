@@ -40,6 +40,6 @@ For a full list of existing publications, see [here](#publications).
 
 ## Publications ##
 
-The `Crayon` code and its modules ared described in the following publications:
+The `Crayon` code and its modules are described in the following publications:
 
 * [Wilson T., *et al* (2025). 51th EPS Conference on Contr. Fusion and Plasma Phys](https://lac913.epfl.ch/epsppd3/2025/html/PDF/P4_177.pdf)
