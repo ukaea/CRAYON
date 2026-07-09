@@ -73,7 +73,8 @@ unit_test_main: # this allow us to run different jobs on main vs a pr
   rules:
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" || $CI_COMMIT_BRANCH == "main"'
       when: always
-    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
 
 pre-commit-checks:
   extends: .test
