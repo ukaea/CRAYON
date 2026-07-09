@@ -1,35 +1,86 @@
-# Run pipelines for commits / merges to main branches or manual.
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
-    - when: never
+# There is a lot of duplication below because we don't have a recent enough
+# GitLab to use variables defined within rules, a la
+# https://about.gitlab.com/releases/2021/01/22/gitlab-13-8-released/#support-variables-for-pipeline-rules
+# Once that gets enabled, we can do something like:
+#
+# workflow:
+#   rules:
+#     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" || $CI_COMMIT_BRANCH == "main"'
+#       when: always
+#       variables:
+#         IMAGE_TAG: release
+#     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_COMMIT_BRANCH == "develop"'
+#       when: always
+#       variables:
+#         IMAGE_TAG: develop
+#
+# and then use $IMAGE_TAG for the image: key in the job
+variables:
+  UV_VERSION: "0.11.28"
+  PYTHON_VERSION: "3.11"
+  BASE_LAYER: trixie
+  # GitLab CI creates a separate mountpoint for the build directory,
+  # so we need to copy instead of using hard links.
+  UV_LINK_MODE: copy
+  GIT_DEPTH: "150" # possibly dont need but will reduce amount cloned
 
-stages:
+default:
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
+  # Work around "shell not found" errors in CI.
+  # https://gitlab.ukaea.uk/gitlab/gitlab-support/-/issues/9
+  tags:
+    - ubuntu
+    - lower-privacy
+
+stages: # you can add more here at a later date eg docs etc
+  - pre-commit
   - test
 
-unit-tests:
+.test:
   stage: test
-  tags:
-    - freia
-  script:
-    - . /etc/profile
-    - module use /common/software/easybuild/modules/all
-    - module load IMAS-AL-Python/5.4.0-foss-2023b-DD-3.42.0
-    - module load netcdf4-python/1.7.1.post2-foss-2023b
-    - module load scikit-learn/1.4.0-gfbf-2023b
-    - module load Tkinter/3.11.5-GCCcore-13.2.0
-    - module load matplotlib/3.8.2-gfbf-2023b
-    # Install uv.
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    # Add to PATH.
-    - source $HOME/.local/bin/env
+  interruptible: true
+  before_script:
+    - env
+    - pwd
     - uv --version
-    # Until imas-core PyPI version compatible with Freia need to ignore it.
-    # Also prevent sync when running commands.
-    - uv sync --all-extras --no-install-package imas-core
-    - uv run --no-sync python -c "import crayon; print(crayon.__version__)"
-    - uv run --no-sync ruff check
-    - uv run --no-sync ruff format --check
-    - uv run --no-sync pytest
+    - uv sync --all-extras
+
+.unit_test:
+  extends: .test
+  variables:
+    SRC_DIR: step_reactor
+  script:
+    - uv run pytest --cov --cov-report term --cov-report xml:coverage.xml --junit-xml=test-results.xml
+    # The below is necessary for automatic class path correction, which is
+    # introduced in GitLab 13.8 and which we don't have yet.
+    # Solution taken from https://forum.gitlab.com/t/enabling-cobertura/36918/14
+    - sed "s=<source>.*${SRC_DIR}</source>=<source>./${SRC_DIR}</source>=g" coverage.xml > coverage-gitlab.xml
+    - sed -i "s;filename=\";filename=\"${SRC_DIR}/;g" coverage-gitlab.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    name: unit_tests
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - test-results.xml
+      - coverage.xml
+      - coverage-gitlab.xml
+
+unit_test_main: # this allow us to run different jobs on main vs a pr
+  extends: .unit_test
+  rules:
+    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" || $CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
+
+pre-commit-checks:
+  extends: .test
+  stage: pre-commit
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - uv run pre-commit run --from-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME --to-ref HEAD
+  rules:
+    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+      when: always
