@@ -180,7 +180,7 @@ If `source = 'analytic'`:
 
 - `shape`: String indicating which analytic model is being used.
   - `bounding_box_2d`: A rectangular bounding box on 2 coordinate components.
-  - `bounding_box_2d`: A cuboid bounding box on 3 coordinate components.
+  - `bounding_box_3d`: A cuboid bounding box on 3 coordinate components.
 
 - `coordinate`: String indiciating which coordinate components the limiter applies to.
   - `xy`: 2D Cartesian limiter in $`(x, y)`$ plane. Only valid for `shape = 'bounding_box_2d'`.
@@ -189,7 +189,7 @@ If `source = 'analytic'`:
 
   - `yz`: 2D Cartesian limiter in $`(y, z)`$ plane. Only valid for `shape = 'bounding_box_2d'`.
 
-  - `yz`: 2D cylindrical limiter in $`(R, Z)`$ plane. Only valid for `shape = 'bounding_box_2d'`.
+  - `rz`: 2D cylindrical limiter in $`(R, Z)`$ plane. Only valid for `shape = 'bounding_box_2d'`.
 
   - `xyz`: 3D Cartesian limiter in $`(x, y, z)`$. Only valid for `shape = 'bounding_box_3d'`.
 
@@ -579,11 +579,11 @@ Controls for explicit integration methods.
 `'RK4_RUNGE'`,
 `'RK45_DORMAND_PRINCE'`,
 `'RK45_CASH_KARP'`,
-or `'RK45_TSITSORAS'`.
+or `'RK45_TSITOURAS'`.
 
   - `'RK4_RUNGE'`: Runge-Kutta 4th order with 'classic' coefficients from *M. Kutta, Zeitschrift für Mathematik und Physik, Vol. 46, pp. 435-453, 1901*. Do not use for real problems!
   - `'RK45_DORMAND_PRINCE'`: Runge-Kutta 4(5) with coefficients from *J. R. Dormand, P. J. Prince, Journal of Computational and Applied Mathematics, Vol. 6, No. 1, pp. 19-26, 1980*.
   - `'RK45_CASH_KARP'`: Runge-Kutta 4(5) with coefficients from *J. R. Cash, A. H. Karp, ACM Transactions on Mathematical Software, Vol. 16, No. 3, pp. 201-222 1990.*.
-  - `'RK45_TSITSORAS'`: Runge-Kutta 4(5) with coefficients from *Ch. Tsitoras, Computers and Mathematics with Applications, Vol. 62, No. 2, pp. 770-775, 2011*.
+  - `'RK45_TSITOURAS'`: Runge-Kutta 4(5) with coefficients from *Ch. Tsitouras, Computers and Mathematics with Applications, Vol. 62, No. 2, pp. 770-775, 2011*.
 
 - `max_iterations`: Maximum interations to find acceptable time step before ray is stopped.
