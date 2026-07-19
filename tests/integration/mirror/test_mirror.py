@@ -20,7 +20,7 @@ run_directory = pathlib.Path(__file__).parent
 
 def write_netcdf():
     """
-    Write input data for test case to IMAS database.
+    Write input data for test case to netCDF4 file.
     """
     # Magnetic field.
     r = np.linspace(0.0, 2.0, 95)
