@@ -1,5 +1,7 @@
 # Crayon #
 
+## Introduction ##
+
 Crayon is a ray tracing code for simulating the propagation and damping of microwaves in fusion relevant plasmas with a focus on electron Bernstein waves (EBWs).
 
 ## Installation ##
@@ -20,7 +22,7 @@ See [contributer guide](CONTRIBUTING.md).
 
 ## Terms of Use ##
 
-`Crayon` is released under the following [license](LICENSE), but we also ask that
+`Crayon` is released under <LICENSE> but we also ask that
 you show professional courtesy when using this code:
 
 1. Since you are benefiting from work on `Crayon`, we ask that you submit any

@@ -17,7 +17,6 @@
 # and then use $IMAGE_TAG for the image: key in the job
 variables:
   UV_VERSION: "0.11.28"
-  PYTHON_VERSION: "3.11"
   BASE_LAYER: trixie
   # GitLab CI creates a separate mountpoint for the build directory,
   # so we need to copy instead of using hard links.
@@ -43,7 +42,13 @@ stages: # you can add more here at a later date eg docs etc
     - env
     - pwd
     - uv --version
-    - uv sync --all-extras
+    - "uv run --no-sync pip index versions netcdf4 --only-binary :all:"
+    - uv sync --all-extras --no-build-package netcdf4 --python $PYTHON_VERSION --resolution highest
+  parallel:
+    matrix:
+      - PYTHON_VERSION:
+        - "3.11"
+        - "3.13"
 
 .unit_test:
   extends: .test

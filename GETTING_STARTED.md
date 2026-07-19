@@ -1,6 +1,6 @@
 ## Getting Started ##
 
-Firstly follow the [installation guide](INSTALLATION.md).
+Firstly follow the [installation guide](docs/installation.md).
 
 Once installed Crayon provides a single command line script `crayon` to run the code which has several subcommands.
 

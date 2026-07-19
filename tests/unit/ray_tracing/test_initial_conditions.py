@@ -4,6 +4,7 @@ Unit tests for ray_tracing.initial_conditions.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -62,8 +63,10 @@ class TestInitialConditions:
         )
 
         with (
-            tempfile.TemporaryFile("r+") as f,
-            nc4.Dataset(f, "w", auto_complex=True) as dset,
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(
+                pathlib.Path(tmpdir).joinpath("tmp.nc"), "w", auto_complex=True
+            ) as dset,
         ):
             Dimensions().write_netcdf(dset)
             group = dset.createGroup("test")

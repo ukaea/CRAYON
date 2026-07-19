@@ -5,6 +5,7 @@ Tests for value_model.analytic
 # Standard imports
 import itertools
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -309,7 +310,10 @@ class TestConstant:
         tensor_model: Constant
             Tensor valued model.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
 
             scalar_model.write_netcdf(dset.createGroup("scalar_model"))
@@ -540,7 +544,10 @@ class TestC0Ramp:
         tensor_model: Constant
             Tensor valued model.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
 
             scalar_model.write_netcdf(dset.createGroup("scalar_model"))

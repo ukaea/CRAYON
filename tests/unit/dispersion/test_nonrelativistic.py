@@ -699,7 +699,7 @@ class TestNonRelativisticDispersion:
 
         expected_value = np.zeros((3, 3), dtype=complex)
 
-        for n in range(1 - nmax, nmax):
+        for n in range(-nmax, nmax + 1):
             ie = special.ive(n, flr)
             i1e = np.exp(-flr) * special.ivp(n, flr)
 

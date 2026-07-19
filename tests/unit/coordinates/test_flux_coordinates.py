@@ -4,6 +4,7 @@ Unit tests for coordinates.coordinates.flux_coordinates.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -337,7 +338,10 @@ class TestAxisymmetricFluxCoordinate:
         coordinate : AxisymmetricFluxCoordinate
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = AxisymmetricFluxCoordinate.read_netcdf(
@@ -553,7 +557,10 @@ class TestAxisymmetricFluxCoordinateRebase:
         coordinate : AxisymmetricFluxCoordinateRebase
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = AxisymmetricFluxCoordinateRebase.read_netcdf(

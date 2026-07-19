@@ -15,7 +15,7 @@ timestep_controller = "PI_42"
 norm = "HARRIER"
 
 [integrator.explicit]
-solver = "RK45_TSITSORAS"
+solver = "RK45_TSITOURAS"
 max_iterations = 32
 
 [integrator.implicit]

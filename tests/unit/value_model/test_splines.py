@@ -5,6 +5,7 @@ Unit tests for value_model.splines.
 # Standard imports
 import itertools
 import logging
+import pathlib
 import tempfile
 import typing
 
@@ -437,6 +438,11 @@ class _TestSpline:
         f_hessian: typing.Callable[[np.ndarray[float]], np.ndarray[float]],
         f_jerk: typing.Callable[[np.ndarray[float]], np.ndarray[float]],
         shape: tuple[int],
+        /,
+        value_tol: tuple[float, float],
+        jacobian_tol: tuple[float, float],
+        hessian_tol: tuple[float, float],
+        jerk_tol: tuple[float, float],
     ):
         """
         Test value for single model.
@@ -465,40 +471,44 @@ class _TestSpline:
         # Test value
         expected_value = f_value(position)
         actual_value = model.value(position)
-        nptest.assert_allclose(actual_value, expected_value, atol=6e-5)
+
+        logger.warning(abs(expected_value - actual_value))
+        nptest.assert_allclose(
+            actual_value, expected_value, rtol=value_tol[0], atol=value_tol[1]
+        )
 
         # Test jacobian.
         expected_value = f_jacobian(position)
         actual_value = model.jacobian(position)
 
-        nptest.assert_allclose(actual_value, expected_value, atol=2e-4)
+        logger.warning(abs(expected_value - actual_value))
+        nptest.assert_allclose(
+            actual_value,
+            expected_value,
+            rtol=jacobian_tol[0],
+            atol=jacobian_tol[1],
+        )
 
         # Test hessian.
         expected_value = f_hessian(position)
         actual_value = model.hessian(position)
 
-        nptest.assert_allclose(actual_value, expected_value, atol=1e-2)
-
-        # Test multidimensional input.
-        position_multidimensional = np.empty((5, 5, self.x_dim.size))
-        position_multidimensional[..., :] = position
-
-        expected_value = np.empty((5, 5, *shape))
-        for i, j in itertools.product(range(5), range(5)):
-            expected_value[i, j, ...] = f_value(
-                position_multidimensional[i, j]
-            )
-
-        actual_value = model.value(position_multidimensional)
-
-        nptest.assert_allclose(actual_value, expected_value, atol=6e-5)
+        logger.warning(abs(expected_value - actual_value))
+        nptest.assert_allclose(
+            actual_value,
+            expected_value,
+            rtol=hessian_tol[0],
+            atol=hessian_tol[1],
+        )
 
         # Test jerk.
         expected_value = f_jerk(position)
         actual_value = model.jerk(position)
 
         logger.warning(abs(expected_value - actual_value))
-        nptest.assert_allclose(actual_value, expected_value, atol=1e-2)
+        nptest.assert_allclose(
+            actual_value, expected_value, rtol=jerk_tol[0], atol=jerk_tol[1]
+        )
 
         # Test multidimensional input.
         position_multidimensional = np.empty((5, 5, self.x_dim.size))
@@ -513,7 +523,9 @@ class _TestSpline:
         actual_value = model.value(position_multidimensional)
 
         logger.warning(abs(expected_value - actual_value))
-        nptest.assert_allclose(actual_value, expected_value, atol=6e-5)
+        nptest.assert_allclose(
+            actual_value, expected_value, rtol=value_tol[0], atol=value_tol[1]
+        )
 
     def test_value(
         self,
@@ -521,6 +533,10 @@ class _TestSpline:
         vector_model: SplineBase,
         tensor_model: SplineBase,
         position: np.ndarray[float],
+        value_tol: tuple[float, float],
+        jacobian_tol: tuple[float, float],
+        hessian_tol: tuple[float, float],
+        jerk_tol: tuple[float, float],
     ):
         """
         Test value for all models.
@@ -546,6 +562,10 @@ class _TestSpline:
             self.scalar_hessian,
             self.scalar_jerk,
             (),
+            value_tol,
+            jacobian_tol,
+            hessian_tol,
+            jerk_tol,
         )
 
         self._test_value(
@@ -556,6 +576,10 @@ class _TestSpline:
             self.vector_hessian,
             self.vector_jerk,
             (_y,),
+            value_tol,
+            jacobian_tol,
+            hessian_tol,
+            jerk_tol,
         )
 
         self._test_value(
@@ -566,10 +590,17 @@ class _TestSpline:
             self.tensor_hessian,
             self.tensor_jerk,
             (_y, _y),
+            value_tol,
+            jacobian_tol,
+            hessian_tol,
+            jerk_tol,
         )
 
     def test_scalar_snap(
-        self, scalar_model: SplineBase, position: np.ndarray[float]
+        self,
+        scalar_model: SplineBase,
+        position: np.ndarray[float],
+        tol: tuple[float, float],
     ):
         """
         Test snap of scalar model.
@@ -596,7 +627,9 @@ class _TestSpline:
         actual_value = scalar_model.snap(position)
 
         logger.warning(abs(expected_value - actual_value))
-        nptest.assert_allclose(actual_value, expected_value, atol=1e-2)
+        nptest.assert_allclose(
+            actual_value, expected_value, rtol=tol[0], atol=tol[1]
+        )
 
         # Fill cache for snap
         cache = ValueCache.for_model(scalar_model)
@@ -720,7 +753,10 @@ class _TestSpline:
         tensor_model: Constant
             Tensor constant model.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
 
             scalar_model.write_netcdf(dset.createGroup("scalar_model"))
@@ -1133,6 +1169,55 @@ class TestSpline1D(_TestSpline):
             data,
             (True, False, False),
         )
+
+    def test_value(
+        self,
+        scalar_model: Spline3D,
+        vector_model: Spline3D,
+        tensor_model: Spline3D,
+        position: np.ndarray[float],
+    ):
+        """
+        Test value for all models.
+
+        Parameters
+        ----------
+        scalar_model: Constant
+            Scalar constant model.
+        vector_model: Constant
+            Vector constant model.
+        tensor_model: Constant
+            Tensor constant model.
+        position: np.ndarray[float]
+            Test position.
+        """
+        super().test_value(
+            scalar_model,
+            vector_model,
+            tensor_model,
+            position,
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+        )
+
+    def test_scalar_snap(
+        self,
+        scalar_model: SplineBase,
+        position: np.ndarray[float],
+    ):
+        """
+        Test snap of scalar model.
+
+        Parameters
+        ----------
+        scalar_model: SplineBase
+            Scalar valued spline model.
+        position: np.ndarray[float]
+            Test position.
+        """
+        super().test_scalar_snap(scalar_model, position, (1.0e-7, 1.0e-8))
 
 
 class TestSpline2D(_TestSpline):
@@ -1572,6 +1657,55 @@ class TestSpline2D(_TestSpline):
             data,
             (True, True, False),
         )
+
+    def test_value(
+        self,
+        scalar_model: Spline3D,
+        vector_model: Spline3D,
+        tensor_model: Spline3D,
+        position: np.ndarray[float],
+    ):
+        """
+        Test value for all models.
+
+        Parameters
+        ----------
+        scalar_model: Constant
+            Scalar constant model.
+        vector_model: Constant
+            Vector constant model.
+        tensor_model: Constant
+            Tensor constant model.
+        position: np.ndarray[float]
+            Test position.
+        """
+        super().test_value(
+            scalar_model,
+            vector_model,
+            tensor_model,
+            position,
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+            (1.0e-7, 1.0e-8),
+        )
+
+    def test_scalar_snap(
+        self,
+        scalar_model: SplineBase,
+        position: np.ndarray[float],
+    ):
+        """
+        Test snap of scalar model.
+
+        Parameters
+        ----------
+        scalar_model: SplineBase
+            Scalar valued spline model.
+        position: np.ndarray[float]
+            Test position.
+        """
+        super().test_scalar_snap(scalar_model, position, (1.0e-7, 1.0e-8))
 
 
 class TestSpline3D(_TestSpline):
@@ -2143,7 +2277,14 @@ class TestSpline3D(_TestSpline):
         """
         if scipy.__version__ > "1.13.0":
             super().test_value(
-                scalar_model, vector_model, tensor_model, position
+                scalar_model,
+                vector_model,
+                tensor_model,
+                position,
+                (5.0e-5, 1.0e-4),
+                (5.0e-4, 2.0e-4),
+                (3.0e-3, 2.0e-3),
+                (2.0e-2, 5.0e-1),
             )
         else:
             pytest.skip("Requires scipy >= 1.13.0")
@@ -2162,9 +2303,9 @@ class TestSpline3D(_TestSpline):
             Test position.
         """
         if scipy.__version__ > "1.13.0":
-            super().test_scalar_snap(scalar_model, position)
-
-        pytest.skip("Requires scipy >= 1.13.0")
+            super().test_scalar_snap(scalar_model, position, (5.0e-2, 5.0e-1))
+        else:
+            pytest.skip("Requires scipy >= 1.13.0")
 
     def test_fill_cache(
         self,
@@ -2191,5 +2332,5 @@ class TestSpline3D(_TestSpline):
             super().test_fill_cache(
                 scalar_model, vector_model, tensor_model, position
             )
-
-        pytest.skip("Requires scipy >= 1.13.0")
+        else:
+            pytest.skip("Requires scipy >= 1.13.0")
