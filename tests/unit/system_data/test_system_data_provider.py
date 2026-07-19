@@ -4,6 +4,7 @@ Unit tests for system_data.system_data_provider.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -210,7 +211,10 @@ class TestKinetic:
         data_1d = np.linspace(3.0, 4.0, n0 * n1).reshape((n0, n1))
         data_2d = np.linspace(4.0, 5.0, n0 * n1 * n2).reshape((n0, n1, n2))
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             # Create Dimensions.
             dset.createDimension("x", 3)
 
@@ -286,7 +290,10 @@ class TestKinetic:
             electron_density_per_m3, electron_temperature_ev, effective_charge
         )
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             kinetic.write_netcdf(dset)
             kinetic_2 = Kinetic.read_netcdf(dset)
@@ -321,7 +328,10 @@ class TestMagnetic:
             )
         )
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             magnetic.write_netcdf(dset)
             magnetic_2 = Magnetic.read_netcdf(dset)
@@ -918,7 +928,10 @@ class TestMagneticTokamak:
             scale_factor_magnetic_field=scale_factor,
         )
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             magnetic.write_netcdf(dset)
             magnetic_2 = MagneticTokamak.read_netcdf(
@@ -1090,7 +1103,10 @@ class TestLimiters:
         limiters : Limiters
             Test limiters.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions().write_netcdf(dset)
             limiters.write_netcdf(dset)
             limiters_2 = Limiters.read_netcdf(dset)
@@ -1348,7 +1364,10 @@ class TestSystemData:
         system_data : SystemData
             System data.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions().write_netcdf(dset)
             system_data.write_netcdf(dset)
             system_data_2 = SystemData.read_netcdf(dset)
@@ -1439,8 +1458,8 @@ class TestSystemDataProvider:
         )
 
         assert (
-            data_sources["netcdf_test"].filepath
-            == data_sources_2["netcdf_test"].filepath
+            data_sources["netcdf_test"].filepath.resolve()
+            == data_sources_2["netcdf_test"].filepath.resolve()
         )
 
         # Check coordinates.
@@ -1725,8 +1744,10 @@ class TestSystemDataProvider:
 
         core_profiles.validate()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dbentry = DBEntry(f"imas:hdf5?path={tmpdir}", "a")
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            DBEntry(f"imas:hdf5?path={tmpdir}", "a") as dbentry,
+        ):
             dbentry.put(
                 core_profiles,
                 occurrence=(
@@ -1773,6 +1794,8 @@ class TestSystemDataProvider:
             assert isinstance(model, Spline1D)
             nptest.assert_allclose(model._abscissas[0], rho_poloidal)
             nptest.assert_allclose(model._data, zeff_1)
+
+            dbentry.close()
 
     @pytest.mark.skip
     @staticmethod
@@ -1868,8 +1891,10 @@ class TestSystemDataProvider:
         equilibrium.validate()
 
         # Mock opening database.
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dbentry = DBEntry(f"imas:hdf5?path={tmpdir}", "a")
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            DBEntry(f"imas:hdf5?path={tmpdir}", "a") as dbentry,
+        ):
             dbentry.put(
                 equilibrium,
                 occurrence=(
@@ -2007,8 +2032,10 @@ class TestSystemDataProvider:
         ids_wall.validate()
 
         # Mock opening data sources.
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dbentry = DBEntry(f"imas:hdf5?path={tmpdir}", "a")
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            DBEntry(f"imas:hdf5?path={tmpdir}", "a") as dbentry,
+        ):
             dbentry.put(
                 ids_equilibrium,
                 occurrence=(

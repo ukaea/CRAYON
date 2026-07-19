@@ -4,6 +4,7 @@ Unit tests for ray_tracing.integrator.options.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -77,7 +78,10 @@ class TestOptionsIntegrator:
         options : OptionsIntegrator
             Options for integrator.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             options.write_netcdf(dset)
             options2 = OptionsIntegrator.read_netcdf(dset)
 

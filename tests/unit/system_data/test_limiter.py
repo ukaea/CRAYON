@@ -4,6 +4,7 @@ Tests for system_data.limiter
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -500,7 +501,10 @@ class TestLimiter:
 
         limiter = Limiter(elements, 0.1)
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions().write_netcdf(dset)
             limiter.write_netcdf(dset)
             limiter_2 = Limiter.read_netcdf(dset)

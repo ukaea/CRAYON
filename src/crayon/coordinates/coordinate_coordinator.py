@@ -128,7 +128,7 @@ class CoordinatePair:
     @property
     def unique_name(self) -> str:
         """
-        Return a string which contains the names of both coordinates but is
+        A string which contains the names of both coordinates but is
         independent of the order of coordinate_1 and coordinate_2.
         """
         if self.coordinate_1.value < self.coordinate_2.value:

@@ -1422,7 +1422,7 @@ class Spline3D(SplineBase):
                 int(i == idx_2)
                 + int(j == idx_2)
                 + int(k == idx_2)
-                + int(m == idx_1)
+                + int(m == idx_2)
             )
             nu[2] = 4 - nu[0] - nu[1]
 

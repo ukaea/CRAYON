@@ -4,6 +4,7 @@ Unit tests for system_data_provider.schemas
 
 # Standard imports
 import logging
+import pathlib
 
 import numpy as np
 import numpy.testing as nptest
@@ -85,7 +86,9 @@ class TestDataSource:
         data_source_2 = DataSourceNetcdf.from_dict_toml(toml_dict)
 
         assert isinstance(data_source_2, DataSourceNetcdf)
-        assert data_source.filepath == data_source_2.filepath
+        assert (
+            data_source.filepath.resolve() == data_source_2.filepath.resolve()
+        )
 
     @staticmethod
     def test_vmec_round_trip_toml():
@@ -97,7 +100,9 @@ class TestDataSource:
         data_source_2 = DataSourceVmec.from_dict_toml(toml_dict)
 
         assert isinstance(data_source_2, DataSourceVmec)
-        assert data_source.filepath == data_source_2.filepath
+        assert (
+            data_source.filepath.resolve() == data_source_2.filepath.resolve()
+        )
 
     @staticmethod
     def test_parse_data_sources():
@@ -138,11 +143,17 @@ class TestDataSource:
 
         netcdf_2 = data_sources["netcdf_test"]
         assert isinstance(netcdf_2, DataSourceNetcdf)
-        assert netcdf["filepath"] == str(netcdf_2.filepath)
+        assert (
+            pathlib.Path(netcdf["filepath"]).resolve()
+            == netcdf_2.filepath.resolve()
+        )
 
         vmec_2 = data_sources["vmec_test"]
         assert isinstance(vmec_2, DataSourceVmec)
-        assert vmec["filepath"] == str(vmec_2.filepath)
+        assert (
+            pathlib.Path(vmec["filepath"]).resolve()
+            == vmec_2.filepath.resolve()
+        )
 
         netcdf_3 = data_sources["netcdf_caps_test"]
         assert isinstance(netcdf_3, DataSourceNetcdf)

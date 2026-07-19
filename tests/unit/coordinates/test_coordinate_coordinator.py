@@ -4,6 +4,7 @@ Unit tests for coordinates.coordinate_coordinator.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -253,7 +254,10 @@ class TestCoordinateCoordinator:
         """
         cc = coordinate_coordinator
 
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             cc.write_netcdf(dset)
             cc2 = CoordinateCoordinator.read_netcdf(dset)

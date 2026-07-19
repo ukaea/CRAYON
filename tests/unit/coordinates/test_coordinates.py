@@ -4,6 +4,7 @@ Unit tests for coordinates.coordinates.
 
 # Standard imports
 import logging
+import pathlib
 import tempfile
 
 import netCDF4 as nc4  # noqa: N813
@@ -82,7 +83,10 @@ class TestCartesian:
         coordinate : Cartesian
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = Cartesian.read_netcdf()
@@ -160,7 +164,10 @@ class TestCylindrical:
         coordinate : Cylindrical
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = Cylindrical.read_netcdf()
@@ -438,7 +445,10 @@ class TestSpherical:
         coordinate : Spherical
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = Spherical.read_netcdf()
@@ -679,7 +689,10 @@ class TestToroidal:
         coordinate : Toroidal
             Test coordinate.
         """
-        with tempfile.TemporaryFile("r+") as f, nc4.Dataset(f, "w") as dset:
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            nc4.Dataset(pathlib.Path(tmpdir).joinpath("tmp.nc"), "w") as dset,
+        ):
             Dimensions.write_netcdf(dset)
             coordinate.write_netcdf(dset)
             coordinate_2 = Toroidal.read_netcdf(
