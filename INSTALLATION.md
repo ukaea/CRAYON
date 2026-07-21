@@ -5,8 +5,8 @@
 We recommend using a venv. This can be created and activated using
 
 ```
-python3 -m venv ./venv.
-. venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 Clone the Crayon respository, cd into the root directory and run *pip install*

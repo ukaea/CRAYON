@@ -75,20 +75,22 @@ NOTE: If providing vector components in coordinate systems other than Cartesian 
 
   - `tokamak`: Magnetic field is axisymmetric and provided using a poloidal flux function $`\psi(r, z)`$ and a diamagnetic function $`F(\psi)`$.
 
-- `source`: String indicating what model is being used.
+- `source`: String indicating the source of the data used in the model.
   - `imas<>`: Set to the name of an IMAS data source. The magnetic field will be constructed from a poloidal flux grid inside the `equilibrium` IDS. Only valid for `topology='tokamak'`
 
-  - `constant`: An analytic constant model. See Analytic Models below. Only valid for `topology='simple'`.
+  - `constant`: An analytic constant model. See [Analytic Models/Constant](#constant). Only valid for `topology='simple'`.
 
-  - `ramp`: An analytic ramp model. See Analytic Models. Only valid for `topology='simple'`.
+  - `ramp`: An analytic ramp model. See [Analytic Models/Ramp](#ramp). Only valid for `topology='simple'`.
 
-  - `quadratic_well`: An analytic quadratic well model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_well`: An analytic quadratic well model. See [Analytic Models/Quadratic Well](#quadratic-well). Only valid for `topology='simple'`.
 
-  - `quadratic_channel`: An analytic quadratic channel model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_channel`: An analytic quadratic channel model. See [Analytic Models/Quadratic Channel](#quadratic-channel). Only valid for `topology='simple'`.
 
-  - `quadratic_bowl`: An analytic bowl model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_bowl`: An analytic bowl model. See [Analytic Models/Quadratic Bowl](#quadratic-bowl). Only valid for `topology='simple'`.
 
 - `scale_factor` (optional): All values will be scaled by this factor. Defaults to $`1.0`$ if not provided.
+
+If using an analytic source additional options need to be provided. See [Analytic Models](#analytic-models).
 
 Example of a constant magnetic field:
 
@@ -120,22 +122,24 @@ scale_factor = 1.0
 
 Each model is defined using the same options.
 
-- `source`: String indicating what model is being used.
+- `source`: String indicating the source of the data used in the model.
   - `imas<>`: Set to the name of an IMAS data source. The kinetic profile will be constructed from a 1d profile against a flux coordinate from the `core_profiles` IDS.
 
   - `netcdf<>`: Set to the name of a netCDF data source. The kinetic profile will be constructed from a spline fit to the data from the file.
 
-  - `constant`: An analytic constant model. See Analytic Models below. Only valid for `topology='simple'`.
+  - `constant`: An analytic constant model. See [Analytic Models/Constant](#constant). Only valid for `topology='simple'`.
 
-  - `ramp`: An analytic ramp model. See Analytic Models. Only valid for `topology='simple'`.
+  - `ramp`: An analytic ramp model. See [Analytic Models/Ramp](#ramp). Only valid for `topology='simple'`.
 
-  - `quadratic_well`: An analytic quadratic well model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_well`: An analytic quadratic well model. See [Analytic Models/Quadratic Well](#quadratic-well). Only valid for `topology='simple'`.
 
-  - `quadratic_channel`: An analytic quadratic channel model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_channel`: An analytic quadratic channel model. See [Analytic Models/Quadratic Channel](#quadratic-channel). Only valid for `topology='simple'`.
 
-  - `quadratic_bowl`: An analytic bowl model. See Analytic Models. Only valid for `topology='simple'`.
+  - `quadratic_bowl`: An analytic bowl model. See [Analytic Models/Quadratic Bowl](#quadratic-bowl). Only valid for `topology='simple'`.
 
 - `scale_factor`: All values will be scaled by this factor. Defaults to $`1.0`$ if not provided.
+
+If using an analytic source additional options need to be provided. See [Analytic Models](#analytic-models).
 
 Example of a $`C^2`$ ramp in electron density and a constant electron temperature and effective charge.
 
@@ -167,7 +171,7 @@ constant_value = 1.0
 
 `limiters` contains information about walls and other solid surfaces the rays must interact with. Each limiter is provided in its own subsection i.e. the section names are `limiters.a`, `limiters.b`, etc.
 
-- `source`: String indicating what model is being used.
+- `source`: String indicating the source of the data used in the model.
   - `analytic`:
 
   - `imas<>`: Set to the name of an IMAS data source. The limiter will be read from the `wall` IDS.
