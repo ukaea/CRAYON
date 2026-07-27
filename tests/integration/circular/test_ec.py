@@ -6,11 +6,11 @@ Circular EC integration test.
 import logging
 import pathlib
 
-import imas
+# Third party imports.
 import numpy as np
 
 # Local imports
-from crayon.imas import imasdef
+from crayon.imas import imas, imasdef
 from crayon.scripts import plot_all, plot_single, trace
 from crayon.shared.constants import INPUT
 
