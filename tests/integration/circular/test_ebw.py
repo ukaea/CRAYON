@@ -10,7 +10,7 @@ import pathlib
 import numpy as np
 
 # Local imports
-from crayon.imas import imas, imasdef
+from crayon.imas import imas, imasdef, DBEntry
 from crayon.scripts import optimise, plot_all, plot_single, trace
 from crayon.shared.constants import INPUT
 
@@ -200,7 +200,7 @@ def write_imas():
     path = run_directory.joinpath(INPUT, "imas")
 
     logger.info("Writing %s", path)
-    with imas.DBEntry(f"imas:hdf5?path={path}", "w") as dbase:
+    with DBEntry(f"imas:hdf5?path={path}", "w") as dbase:
         dbase.put(ids_equilibrium, 0)
         dbase.put(ids_core_profiles, 0)
 
