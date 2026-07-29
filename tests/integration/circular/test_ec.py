@@ -161,7 +161,6 @@ def main():
         hamiltonian=True,
         power=True,
         optical_depth=True,
-        mode_conversion=True,
     )
 
     plot_single(

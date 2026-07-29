@@ -359,8 +359,8 @@ def optimise_ox_conversion(
     )
 
     # Run with minimal features.
-    ray_tracer.enable_mode_conversion = False
-    ray_tracer.enable_tunnelling = False
+    ray_tracer._enable_mode_conversion = False
+    ray_tracer._enable_tunnelling = False
 
     # Estimate initial angles.
     coordinate_cache.set_position(
