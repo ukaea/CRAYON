@@ -187,7 +187,7 @@ class InitialConditions(IONetcdf):
             self.power_w,
             self.intensity_w_per_m2,
             self.beam_waist_radius_m,
-            self.bundle,
+            bundle=self.bundle
         )
 
     def write_netcdf(self, group: nc4.Group):

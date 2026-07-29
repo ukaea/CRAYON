@@ -89,6 +89,58 @@ class TestInitialConditions:
         assert ic.intensity_w_per_m2 == ic2.intensity_w_per_m2
         assert ic.beam_waist_radius_m == ic2.beam_waist_radius_m
         assert ic.bundle == ic2.bundle
+    
+    @staticmethod
+    def test_clone():
+        """
+        Test cloning initial conditions gives same object.
+        """
+        ic = InitialConditions(
+            "test",
+            1.0,
+            2.0,
+            [3.0, 4.0, 5.0],
+            [6.0, 7.0, 8.0],
+            9.0,
+            10.0,
+            [11.0, 12.0, 13.0],
+            WaveMode.O,
+            14.0,
+            15.0,
+            16.0,
+            bundle=True,
+        )
+
+        ic2 = ic.clone()
+
+        assert ic.name == ic2.name
+        assert ic.time_ns == ic2.time_ns
+        assert ic.frequency_ghz == ic2.frequency_ghz
+        nptest.assert_allclose(ic.position_cartesian, ic2.position_cartesian)
+        nptest.assert_allclose(
+            ic.refractive_index_cartesian,
+            ic2.refractive_index_cartesian
+        )
+        assert ic.eikonal_phase_rad == ic2.eikonal_phase_rad
+        assert ic.adiabatic_phase_rad == ic2.adiabatic_phase_rad
+        nptest.assert_allclose(ic.polarisation_stix, ic2.polarisation_stix)
+        assert ic.wave_mode == ic2.wave_mode
+        assert ic.power_w == ic2.power_w
+        assert ic.intensity_w_per_m2 == ic2.intensity_w_per_m2
+        assert ic.beam_waist_radius_m == ic2.beam_waist_radius_m
+        assert ic.bundle == ic2.bundle
+
+        # Change arrays in original to check deep copy.
+        ic.position_cartesian.fill(0.0)
+        ic.refractive_index_cartesian.fill(0.0)
+        ic.polarisation_stix.fill(0.0)
+
+        assert not np.allclose(ic.position_cartesian, ic2.position_cartesian)
+        assert not np.allclose(
+            ic.refractive_index_cartesian,
+            ic2.refractive_index_cartesian
+        )
+        assert not np.allclose(ic.polarisation_stix, ic2.polarisation_stix)
 
 
 @pytest.fixture(scope="module")

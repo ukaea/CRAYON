@@ -120,7 +120,7 @@ def main():
 
     plot_single(
         run_directory,
-        "ray_npar_gt_0-0-0",
+        "ray_npar_gt_0-0",
         [0.0],
         show=True,
         rz=True,
@@ -133,7 +133,7 @@ def main():
 
     plot_single(
         run_directory,
-        "ray_npar_lt_0-0",
+        "ray_npar_gt_0-0-0",
         [0.0],
         show=True,
         rz=True,
@@ -141,7 +141,6 @@ def main():
         hamiltonian=True,
         power=True,
         optical_depth=True,
-        mode_conversion=True,
     )
 
 
