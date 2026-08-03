@@ -1,14 +1,12 @@
-angle_format = "RADIANS"
+angle_format = "degrees"
 
-[ray_1]
+[ray_npar_gt_0]
 time_ns = 0.0
 frequency_ghz = 32.0
-position = [ 1.9, 0.0, 0.0,]
-coordinate_system_position = "CYLINDRICAL"
-refractive_index_source = "components"
-refractive_index = [-0.8, 0.0, 0.6]
-coordinate_system_refractive_index = 'cartesian'
-holonomic = true
+position = [3.0, 0.0, 1.0]
+coordinate_system_position = "CARTESIAN"
+refractive_index_source = "optimal_ox"
+n_parallel_positive = true
 polarisation_source = "wave_mode"
 wave_mode = "O"
 power_w = 1.0
