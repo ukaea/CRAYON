@@ -3,8 +3,8 @@ angle_format = "degrees"
 [ray_npar_gt_0]
 time_ns = 0.0
 frequency_ghz = 32.0
-position = [3.0, 0.0, 1.0]
-coordinate_system_position = "CARTESIAN"
+position = [1.9, 0.0, 1.0]
+coordinate_system_position = "CYLINDRICAL"
 refractive_index_source = "optimal_ox"
 n_parallel_positive = true
 polarisation_source = "wave_mode"
