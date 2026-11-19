@@ -486,11 +486,16 @@ class Ray:
         )
 
         # In vacuum E_perp = 0 so E_y and E_parallel are Jones vector.
-        o_mode = abs(
-            np.vdot(
-                stix_polarisation_o_mode,
-                self.hamiltonian_cache.polarisation.stix.value,
+        # Power ~ amplitude**2, so the O mode power fraction is the squared
+        # magnitude of the projection onto the unit O mode polarisation.
+        o_mode = (
+            abs(
+                np.vdot(
+                    stix_polarisation_o_mode,
+                    self.hamiltonian_cache.polarisation.stix.value,
+                )
             )
+            ** 2
         )
 
         return o_mode, max(0, min(1.0, 1.0 - o_mode))
