@@ -1,6 +1,7 @@
 """
-End-to-end check of the power split at O-X mode conversion, on the slab OXB
-case of the integration tests, for a single ray and for a ray bundle.
+End-to-end checks of O-X mode conversion on the slab OXB case of the
+integration tests: the power split, for a single ray and a ray bundle, and
+that a ray converts only once.
 """
 
 # Standard imports
@@ -33,27 +34,29 @@ def first(variable):
     return float(np.ravel(variable[:])[0])
 
 
-def trace_oxb(run_directory, n_radial_zones):
+def run_oxb(run_directory, replacements):
     """
-    Trace the slab OXB case with the given number of radial zones and
-    return {parent: (power before, power after, child initial power, T)}
-    for every ray that converted, T computed from the conversion values
-    the ray stored.
+    Trace the slab OXB case with the given (file, old, new) replacements in
+    its input files, and return the path of the rays output file.
     """
     shutil.copytree(OXB_INPUT, run_directory / "input")
-    for toml, old, new in [
-        ("rays.toml", "n_radial_zones = 1", f"n_radial_zones = {n_radial_zones}"),
-        # The parents convert near node 19; stop the children soon after.
-        ("options.toml", "max_ray_nodes = 100", "max_ray_nodes = 25"),
-    ]:
+    for toml, old, new in replacements:
         path = run_directory / "input" / toml
         text = path.read_text()
         assert old in text
         path.write_text(text.replace(old, new))
     trace(run_directory, [0.0], overwrite=True)
+    return run_directory / "output" / "0.0s" / "rays.nc"
 
+
+def power_splits(rays_file, n_radial_zones):
+    """
+    Return {parent: (power before, power after, child initial power, T)}
+    for every ray that converted, T computed from the conversion values
+    the ray stored.
+    """
     splits = {}
-    with nc4.Dataset(run_directory / "output" / "0.0s" / "rays.nc") as data:
+    with nc4.Dataset(rays_file) as data:
         for name in data.groups:
             child = f"{name}-0"
             if child not in data.groups:
@@ -88,10 +91,42 @@ def test_ox_conversion_power_split(tmp_path, n_radial_zones):
     At conversion the child (X mode) ray starts with T times the parent's
     power there, and the parent keeps the rest.
     """
-    splits = trace_oxb(tmp_path, n_radial_zones)
+    rays_file = run_oxb(
+        tmp_path,
+        [
+            (
+                "rays.toml",
+                "n_radial_zones = 1",
+                f"n_radial_zones = {n_radial_zones}",
+            ),
+            # The parents convert near node 19; stop the children soon after.
+            ("options.toml", "max_ray_nodes = 100", "max_ray_nodes = 25"),
+        ],
+    )
+    splits = power_splits(rays_file, n_radial_zones)
 
     assert splits, "no ray converted"
     for before, after, child, transmission in splits.values():
         assert 0.0 < transmission <= 1.0
         nptest.assert_allclose(child, transmission * before, rtol=1e-4)
         nptest.assert_allclose(child + after, before, rtol=1e-4)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Known: at HIGH fidelity the O mode ray converts a second time.",
+)
+def test_ox_conversion_happens_once(tmp_path):
+    """
+    The single O mode ray of the slab OXB case passes the conversion layer
+    once, so it has exactly one converted child.
+    """
+    rays_file = run_oxb(
+        tmp_path,
+        [("options.toml", 'fidelity = "MEDIUM"', 'fidelity = "HIGH"')],
+    )
+
+    with nc4.Dataset(rays_file) as data:
+        children = [name for name in data.groups if name.startswith("ray_1-0-")]
+
+    assert children == ["ray_1-0-0"]
