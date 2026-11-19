@@ -21,8 +21,8 @@ from crayon.ray_tracing.caches.mode_conversion import (
 )
 from crayon.scripts import trace
 
-OXB_INPUT = (
-    pathlib.Path(__file__).parents[2] / "integration" / "slab" / "oxb" / "input"
+OXB_INPUT = pathlib.Path(__file__).parents[2].joinpath(
+    "integration", "slab", "oxb", "input"
 )
 BEAM_WAIST_RADIUS_M = 0.05  # as in OXB_INPUT / "rays.toml"
 
@@ -127,6 +127,8 @@ def test_ox_conversion_happens_once(tmp_path):
     )
 
     with nc4.Dataset(rays_file) as data:
-        children = [name for name in data.groups if name.startswith("ray_1-0-")]
+        children = [
+            name for name in data.groups if name.startswith("ray_1-0-")
+        ]
 
     assert children == ["ray_1-0-0"]
