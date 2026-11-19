@@ -275,12 +275,16 @@ class TestRay:
     @staticmethod
     @pytest.mark.parametrize("n", [[1.0, 0.0, 0.0], [0.6, 0.0, 0.8]])
     @pytest.mark.parametrize("angle", [0.0, 0.3, np.pi / 4, 1.2])
-    def test_vacuum_power_fraction_in_ox(ray: Ray, n: list, angle: float):
+    @pytest.mark.parametrize("phase", [1.0, 1.0j])
+    def test_vacuum_power_fraction_in_ox(
+        ray: Ray, n: list, angle: float, phase: complex
+    ):
         """
         Test splitting vacuum ray power into O and X mode fractions.
 
-        A polarisation cos(angle) e_O + sin(angle) e_X carries power
-        fractions cos(angle)**2 and sin(angle)**2.
+        A polarisation cos(angle) e_O + phase sin(angle) e_X, with
+        |phase| = 1, carries power fractions cos(angle)**2 and
+        sin(angle)**2.
 
         Parameters
         ----------
@@ -290,6 +294,8 @@ class TestRay:
             Refractive index.
         angle : float
             Mixing angle between O and X polarisations.
+        phase : complex
+            Relative phase factor of the X polarisation.
         """
         ray.set_frequency(10.0)
         ray.set_xn_position([1.0, 0.0, 0.0], n)
@@ -308,7 +314,9 @@ class TestRay:
         )
         nptest.assert_allclose(np.vdot(e_o, e_x), 0.0, atol=1e-12)
 
-        ray.set_polarisation_stix(np.cos(angle) * e_o + np.sin(angle) * e_x)
+        ray.set_polarisation_stix(
+            np.cos(angle) * e_o + phase * np.sin(angle) * e_x
+        )
         o_mode, x_mode = ray.vacuum_power_fraction_in_ox()
 
         nptest.assert_allclose(o_mode, np.cos(angle) ** 2, atol=1e-12)
