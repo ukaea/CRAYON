@@ -2670,54 +2670,17 @@ class RayTracer:
         xk_unconverted = np.empty(Dimensions.xk.size)
 
         if target is not None:
-            # If we are very close to the saddle point root find the branch
-            # at the matching point and follow that to avoid hopping branches.
-            # Find new branch away from saddle point.
-            _success = self._osculating_plane_root_search_1d(
-                xk_closest,
-                -xk_conversion_axis,
-                xk_unconverted,
-                0.01 * initial_step_size,
-                max_attempts=MAX_ATTEMPTS,
-                target=target,
-                threshold=threshold,
-            )
-
-            if not _success:
-                self.ray.set_stop_condition(
-                    "Unable to find displaced branch from closest point "
-                    f"after {MAX_ATTEMPTS} attempts"
-                )
-                return
-
-            # Take step past the conversion point.
-            self.ray.set_xk_position(xk_unconverted[_x], xk_unconverted[_k])
-            self.synchronise_integrator()
-
-            self.integrator.set_timestep(original_timestep_ns)
-            self.step()
-
-            t_converted = self.integrator.t
-            xk_unconverted[_x] = self.integrator.y[_x]
-            xk_unconverted[_k] = self.integrator.y[_k]
-
-            # Project back onto H=0 branch away from saddle point.
-            _success = self._osculating_plane_root_search_1d(
-                xk_unconverted.copy(),
-                xk_conversion_normal,
-                xk_unconverted,
-                0.01 * initial_step_size,
-                max_attempts=MAX_ATTEMPTS,
-                target=target,
-                threshold=threshold,
-            )
-
-            if not _success:
-                self.ray.set_stop_condition(
-                    "Unable to project unconverted ray back onto H=0 "
-                    f"after {MAX_ATTEMPTS} attempts"
-                )
-                return
+            # If we are very close to the saddle point, restart the
+            # unconverted ray from the matching point, the last point on its
+            # own branch where the WKB approximation was valid, and let it
+            # follow that branch through its turning point. Restarting on a
+            # displaced branch found from the closest point puts the ray back
+            # on its incoming leg, so it can reach the conversion layer again
+            # once the timeout has passed.
+            # Keep the time the converted ray starts at, so the ray's time
+            # still increases along its output.
+            xk_unconverted[:] = xk_matching
+            t_unconverted = t_converted
         else:
             # Otherwise just take a step away from mode conversion region.
             self.ray.set_xk_position(xk_closest[_x], xk_closest[_k])
@@ -2727,6 +2690,7 @@ class RayTracer:
             self.step()
 
             t_converted = self.integrator.t
+            t_unconverted = self.integrator.t
             xk_unconverted[_x] = self.integrator.y[_x]
             xk_unconverted[_k] = self.integrator.y[_k]
 
@@ -2852,7 +2816,7 @@ class RayTracer:
         # Re-initialise integrator at new position.
         # Assume same time to travel to new point as it took from matching
         # point to the point of closest approach.
-        self.ray.set_time(t_converted)
+        self.ray.set_time(t_unconverted)
         self.ray.set_xk_position(
             xk_unconverted[Dimensions.slice_x],
             xk_unconverted[Dimensions.slice_k],

@@ -188,11 +188,6 @@ class TestModeConversionPower:
             )
 
     @staticmethod
-    @pytest.mark.xfail(
-        raises=AssertionError,
-        strict=True,
-        reason="Known: at HIGH fidelity the O mode ray converts twice.",
-    )
     def test_conversion_happens_once(tmp_path: pathlib.Path):
         """
         Test that the single O mode ray of the slab OXB case passes the
