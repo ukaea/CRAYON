@@ -27,17 +27,40 @@ OXB_INPUT = pathlib.Path(__file__).parents[2].joinpath(
 BEAM_WAIST_RADIUS_M = 0.05  # as in OXB_INPUT / "rays.toml"
 
 
-def first(variable):
+def first(variable: nc4.Variable) -> float:
     """
     First value of a netCDF variable.
+
+    Parameters
+    ----------
+    variable : nc4.Variable
+        Variable.
+
+    Returns
+    -------
+    value : float
+        First value.
     """
     return float(np.ravel(variable[:])[0])
 
 
-def run_oxb(run_directory, replacements):
+def run_oxb(
+    run_directory: pathlib.Path, replacements: list[tuple[str, str, str]]
+) -> pathlib.Path:
     """
-    Trace the slab OXB case with the given (file, old, new) replacements in
-    its input files, and return the path of the rays output file.
+    Trace the slab OXB case with text replacements in its input files.
+
+    Parameters
+    ----------
+    run_directory : pathlib.Path
+        Directory to copy the inputs to and trace in.
+    replacements : list[tuple[str, str, str]]
+        (input file name, old text, new text) for each replacement.
+
+    Returns
+    -------
+    rays_file : pathlib.Path
+        Rays output file.
     """
     shutil.copytree(OXB_INPUT, run_directory / "input")
     for toml, old, new in replacements:
@@ -49,11 +72,30 @@ def run_oxb(run_directory, replacements):
     return run_directory / "output" / "0.0s" / "rays.nc"
 
 
-def power_splits(rays_file, n_radial_zones):
+def power_splits(
+    rays_file: pathlib.Path, n_radial_zones: int
+) -> dict[str, tuple[float, float, float, float]]:
     """
-    Return {parent: (power before, power after, child initial power, T)}
-    for every ray that converted, T computed from the conversion values
-    the ray stored.
+    Power split at the first conversion of every ray that converted.
+
+    The parent's power at the conversion is its power after the internal
+    damping of the step on which it converted, before the converted power
+    is removed (as external optical depth).
+
+    Parameters
+    ----------
+    rays_file : pathlib.Path
+        Rays output file.
+    n_radial_zones : int
+        Number of radial zones; 1 is a single ray (beam transmission),
+        more is a ray bundle (plane-wave transmission).
+
+    Returns
+    -------
+    splits : dict[str, tuple[float, float, float, float]]
+        For each parent: (its power at conversion, its power after the
+        conversion, the child's initial power, the transmission T computed
+        from the conversion values the parent stored).
     """
     splits = {}
     with nc4.Dataset(rays_file) as data:
@@ -63,8 +105,13 @@ def power_splits(rays_file, n_radial_zones):
                 continue
             ray = data[name]
             power = np.ravel(ray["power"][:])
+            tau_internal = np.ravel(ray["optical_depth_internal"][:])
+            tau_external = np.ravel(ray["optical_depth_external"][:])
             # The conversion is the largest drop in power along the ray.
             step = int(np.argmax(power[:-1] - power[1:]))
+            power_at_conversion = first(ray["initial_power"]) * np.exp(
+                -(tau_internal[step + 1] + tau_external[step])
+            )
             args = (
                 first(ray["k0ln_saddle"]),
                 first(ray["y_saddle"]),
@@ -77,7 +124,7 @@ def power_splits(rays_file, n_radial_zones):
             else:
                 transmission = mjolhus_plane_wave(*args)
             splits[name] = (
-                power[step],
+                power_at_conversion,
                 power[step + 1],
                 first(data[child]["initial_power"]),
                 transmission,
@@ -85,50 +132,85 @@ def power_splits(rays_file, n_radial_zones):
     return splits
 
 
-@pytest.mark.parametrize("n_radial_zones", [1, 2])
-def test_ox_conversion_power_split(tmp_path, n_radial_zones):
+class TestModeConversionPower:
     """
-    At conversion the child (X mode) ray starts with T times the parent's
-    power there, and the parent keeps the rest.
+    End-to-end tests of O-X mode conversion on the slab OXB case.
     """
-    rays_file = run_oxb(
-        tmp_path,
-        [
-            (
-                "rays.toml",
-                "n_radial_zones = 1",
-                f"n_radial_zones = {n_radial_zones}",
-            ),
-            # The parents convert near node 19; stop the children soon after.
-            ("options.toml", "max_ray_nodes = 100", "max_ray_nodes = 25"),
-        ],
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("n_radial_zones", "n_parallel"), [(1, 0.655), (2, 0.6)]
     )
-    splits = power_splits(rays_file, n_radial_zones)
+    def test_power_split(
+        tmp_path: pathlib.Path, n_radial_zones: int, n_parallel: float
+    ):
+        """
+        Test the power split at conversion: the child (X mode) ray starts
+        with T times the parent's power there, and the parent keeps the rest.
 
-    assert splits, "no ray converted"
-    for before, after, child, transmission in splits.values():
-        assert 0.0 < transmission <= 1.0
-        nptest.assert_allclose(child, transmission * before, rtol=1e-4)
-        nptest.assert_allclose(child + after, before, rtol=1e-4)
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Run directory.
+        n_radial_zones : int
+            Number of radial zones.
+        n_parallel : float
+            Launch parallel refractive index.
+        """
+        rays_file = run_oxb(
+            tmp_path,
+            [
+                (
+                    "rays.toml",
+                    "n_radial_zones = 1",
+                    f"n_radial_zones = {n_radial_zones}",
+                ),
+                (
+                    "rays.toml",
+                    "n_parallel = 0.655",
+                    f"n_parallel = {n_parallel}",
+                ),
+                # The parents convert near node 19; stop the children soon
+                # after.
+                ("options.toml", "max_ray_nodes = 100", "max_ray_nodes = 25"),
+            ],
+        )
+        splits = power_splits(rays_file, n_radial_zones)
 
+        assert splits, "no ray converted"
+        for at_conversion, after, child, transmission in splits.values():
+            assert 0.0 < transmission <= 1.0
+            nptest.assert_allclose(
+                child, transmission * at_conversion, rtol=1e-8
+            )
+            nptest.assert_allclose(
+                after, (1 - transmission) * at_conversion, rtol=1e-8
+            )
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known: at HIGH fidelity the O mode ray converts a second time.",
-)
-def test_ox_conversion_happens_once(tmp_path):
-    """
-    The single O mode ray of the slab OXB case passes the conversion layer
-    once, so it has exactly one converted child.
-    """
-    rays_file = run_oxb(
-        tmp_path,
-        [("options.toml", 'fidelity = "MEDIUM"', 'fidelity = "HIGH"')],
+    @staticmethod
+    @pytest.mark.xfail(
+        raises=AssertionError,
+        strict=True,
+        reason="Known: at HIGH fidelity the O mode ray converts twice.",
     )
+    def test_conversion_happens_once(tmp_path: pathlib.Path):
+        """
+        Test that the single O mode ray of the slab OXB case passes the
+        conversion layer once, so it has exactly one converted child.
 
-    with nc4.Dataset(rays_file) as data:
-        children = [
-            name for name in data.groups if name.startswith("ray_1-0-")
-        ]
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Run directory.
+        """
+        rays_file = run_oxb(
+            tmp_path,
+            [("options.toml", 'fidelity = "MEDIUM"', 'fidelity = "HIGH"')],
+        )
 
-    assert children == ["ray_1-0-0"]
+        with nc4.Dataset(rays_file) as data:
+            children = [
+                name for name in data.groups if name.startswith("ray_1-0-")
+            ]
+
+        assert children == ["ray_1-0-0"]
