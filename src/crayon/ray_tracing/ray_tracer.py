@@ -2347,6 +2347,153 @@ class RayTracer:
 
         return (h_saddle, xk_saddle, pq_saddle, pq_conversion_normal)
 
+    def _ray_flow_pq(self, xk: FloatArray) -> FloatArray:
+        """
+        Ray velocity in phase space at a point, projected onto the
+        osculating plane.
+
+        Parameters
+        ----------
+        xk : np.array[float]
+            Phase space position (x, k).
+
+        Returns
+        -------
+        pq_flow : np.array[float]
+            Osculating plane coordinates (p, q) of the phase space velocity
+            J grad(H) of the ray Hamiltonian (the smallest eigenvalue).
+        """
+        self.ray.set_xk_position(xk[_x], xk[_k])
+        self.ray.calculate_hamiltonian(derivatives=1, determinant=False)
+        xk_flow = np.einsum(
+            "ij, j -> i",
+            SYMPLECTIC_MATRIX_J6,
+            self.ray.hamiltonian_cache.eigenvalue.first_derivative.z[_xk],
+        )
+        return np.linalg.lstsq(
+            self._mode_conversion_cache.xk_osculating_plane.T,
+            xk_flow,
+            rcond=None,
+        )[0]
+
+    def _find_reflected_ray(
+        self,
+        xk_matching: FloatArray,
+        xk_saddle: FloatArray,
+        pq_matching: FloatArray,
+        pq_saddle: FloatArray,
+        pq_conversion_axis: FloatArray,
+        h_saddle_dxk2: FloatArray,
+        xk_reflected: FloatArray,
+        /,
+        *,
+        threshold: float = 1.0e-8,
+    ) -> bool:
+        """
+        Find the start of the unconverted ray on its outgoing branch.
+
+        Near the saddle point the Hamiltonian is a quadratic form in the
+        osculating plane, whose zero set is two lines (asymptotes). The
+        incoming and converted rays lie along one, close to the conversion
+        axis. The unconverted ray leaves along the other, on the end where
+        the ray flows away from the saddle point. Start on that end as far
+        from the saddle as the matching point is, and project onto H = 0.
+
+        Parameters
+        ----------
+        xk_matching : np.array[float]
+            Phase space position (x, k) of the matching point.
+        xk_saddle : np.array[float]
+            Phase space position (x, k) of the saddle point.
+        pq_matching : np.array[float]
+            Osculating plane coordinates (p, q) of the matching point.
+        pq_saddle : np.array[float]
+            Osculating plane coordinates (p, q) of the saddle point.
+        pq_conversion_axis : np.array[float]
+            Osculating plane coordinates (p, q) of the unit vector from the
+            matching point to the saddle point.
+        h_saddle_dxk2 : np.array[float]
+            Hessian of the determinant on phase space at the saddle point.
+        xk_reflected : np.array[float]
+            Phase space position (x, k) the result is stored in.
+        threshold : float, optional
+            Threshold on allowed deviation of Hamiltonian from 0.
+            Default = 1.0e-8.
+
+        Returns
+        -------
+        success : bool
+            If exactly one outgoing branch was found.
+        """
+        basis = self._mode_conversion_cache.xk_osculating_plane
+        hessian = np.einsum("ai, ij, bj -> ab", basis, h_saddle_dxk2, basis)
+
+        # Asymptotes u: u^T M u = 0. With u = (cos a, sin a),
+        # M00 + 2 M01 t + M11 t^2 = 0 for t = tan a (or the swapped form).
+        h00, h01, h11 = hessian[0, 0], hessian[0, 1], hessian[1, 1]
+        discriminant = h01 * h01 - h00 * h11
+        if discriminant <= 0.0:
+            return False
+        root = np.sqrt(discriminant)
+        if abs(h11) >= abs(h00):
+            asymptotes = [
+                np.array([h11, -h01 + sign * root]) for sign in (1.0, -1.0)
+            ]
+        else:
+            asymptotes = [
+                np.array([-h01 + sign * root, h00]) for sign in (1.0, -1.0)
+            ]
+        asymptotes = [u / np.linalg.norm(u) for u in asymptotes]
+
+        # The other asymptote is the one further from the conversion axis.
+        u_out = min(
+            asymptotes, key=lambda u: abs(np.dot(u, pq_conversion_axis))
+        )
+        u_normal = np.array([-u_out[1], u_out[0]])
+
+        # Orientation of the ray flow: on the incoming ray it points from the
+        # matching point towards the saddle point.
+        orientation = np.sign(
+            np.dot(self._ray_flow_pq(xk_matching), pq_saddle - pq_matching)
+        )
+
+        distance = np.linalg.norm(pq_saddle - pq_matching)
+        outgoing = []
+        xk_candidate = np.empty_like(xk_reflected)
+        for sign in (1.0, -1.0):
+            xk_start = xk_saddle + distance * sign * np.matmul(basis.T, u_out)
+            if not self._osculating_plane_root_search_1d(
+                xk_start,
+                np.matmul(basis.T, u_normal),
+                xk_candidate,
+                0.0,
+                max_attempts=MAX_ATTEMPTS,
+                target=0.0,
+                threshold=threshold,
+            ):
+                continue
+            pq_away = np.linalg.lstsq(
+                basis.T, xk_candidate - xk_saddle, rcond=None
+            )[0]
+            flow = orientation * self._ray_flow_pq(xk_candidate)
+            logger.info(
+                "Unconverted ray candidate %s: flow away from saddle %.3e",
+                np.array2string(xk_candidate, precision=3, floatmode="fixed"),
+                np.dot(flow, pq_away),
+            )
+            if np.dot(flow, pq_away) > 0.0:
+                outgoing.append(xk_candidate.copy())
+
+        if len(outgoing) != 1:
+            return False
+
+        xk_reflected[:] = outgoing[0]
+
+        # Leave the ray's Hamiltonian evaluated at the result.
+        self.ray.set_xk_position(xk_reflected[_x], xk_reflected[_k])
+        self.ray.calculate_hamiltonian(derivatives=1, determinant=True)
+        return True
+
     def _osculating_plane_root_search_1d(
         self,
         xk_origin: FloatArray,
@@ -2670,16 +2817,30 @@ class RayTracer:
         xk_unconverted = np.empty(Dimensions.xk.size)
 
         if target is not None:
-            # If we are very close to the saddle point, restart the
-            # unconverted ray from the matching point, the last point on its
-            # own branch where the WKB approximation was valid, and let it
-            # follow that branch through its turning point. Restarting on a
-            # displaced branch found from the closest point puts the ray back
-            # on its incoming leg, so it can reach the conversion layer again
-            # once the timeout has passed.
-            # Keep the time the converted ray starts at, so the ray's time
-            # still increases along its output.
-            xk_unconverted[:] = xk_matching
+            # If we are very close to the saddle point, the ray cannot be
+            # integrated through it: the branches nearly touch, and a step
+            # can cross onto the converted branch. Start the unconverted ray
+            # on its outgoing branch instead, symmetric to the matching point
+            # as the converted ray is. It leaves at the same time as the
+            # converted ray.
+            _success = self._find_reflected_ray(
+                xk_matching,
+                xk_saddle.copy(),
+                pq_matching,
+                pq_saddle,
+                pq_conversion_axis,
+                h_saddle_dxk2,
+                xk_unconverted,
+                threshold=threshold,
+            )
+
+            if not _success:
+                self.ray.set_stop_condition(
+                    "Unable to find the outgoing branch of the unconverted "
+                    "ray"
+                )
+                return
+
             t_unconverted = t_converted
         else:
             # Otherwise just take a step away from mode conversion region.
@@ -2813,9 +2974,7 @@ class RayTracer:
             -np.log(max(1.0e-100, 1 - transmission))
         )
 
-        # Re-initialise integrator at new position.
-        # Assume same time to travel to new point as it took from matching
-        # point to the point of closest approach.
+        # Re-initialise integrator at the start of the unconverted ray.
         self.ray.set_time(t_unconverted)
         self.ray.set_xk_position(
             xk_unconverted[Dimensions.slice_x],

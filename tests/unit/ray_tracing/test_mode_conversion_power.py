@@ -188,24 +188,51 @@ class TestModeConversionPower:
             )
 
     @staticmethod
-    def test_conversion_happens_once(tmp_path: pathlib.Path):
+    @pytest.mark.parametrize(
+        ("fidelity", "n_parallel"),
+        [("HIGH", 0.655), ("MEDIUM", 0.6546), ("MEDIUM", 0.6544)],
+    )
+    def test_conversion_happens_once(
+        tmp_path: pathlib.Path, fidelity: str, n_parallel: float
+    ):
         """
-        Test that the single O mode ray of the slab OXB case passes the
-        conversion layer once, so it has exactly one converted child.
+        Test that the single O mode ray of the slab OXB case, launched close
+        to the optimal parallel refractive index, converts once and is then
+        reflected: it has exactly one converted child, and it never reaches
+        densities above its cutoff, X = 1.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Run directory.
+        fidelity : str
+            Fidelity option.
+        n_parallel : float
+            Launch parallel refractive index.
         """
         rays_file = run_oxb(
             tmp_path,
-            [("options.toml", 'fidelity = "MEDIUM"', 'fidelity = "HIGH"')],
+            [
+                (
+                    "options.toml",
+                    'fidelity = "MEDIUM"',
+                    f'fidelity = "{fidelity}"',
+                ),
+                (
+                    "rays.toml",
+                    "n_parallel = 0.655",
+                    f"n_parallel = {n_parallel}",
+                ),
+            ],
         )
 
         with nc4.Dataset(rays_file) as data:
             children = [
                 name for name in data.groups if name.startswith("ray_1-0-")
             ]
+            density = np.ravel(
+                data["ray_1-0"]["normalised_electron_density"][:]
+            )
 
         assert children == ["ray_1-0-0"]
+        assert np.max(density) < 1.01  # noqa: PLR2004
