@@ -15,6 +15,7 @@ import pytest
 # Third party imports
 # Local imports
 from crayon.coordinates import CoordinateCoordinator, CoordinateSystem
+from crayon.dispersion.base import vacuum_stix_polarisation
 from crayon.ray_tracing.initial_conditions import InitialConditions
 from crayon.ray_tracing.ray_tracer import (
     OptionsIntegrator,
@@ -270,6 +271,56 @@ class TestRay:
 
         ray.accept_step()
         assert ray.index == 1
+
+    @staticmethod
+    @pytest.mark.parametrize("n", [[1.0, 0.0, 0.0], [0.6, 0.0, 0.8]])
+    @pytest.mark.parametrize("angle", [0.0, 0.3, np.pi / 4, 1.2])
+    @pytest.mark.parametrize("phase", [1.0, 1.0j])
+    def test_vacuum_power_fraction_in_ox(
+        ray: Ray, n: list, angle: float, phase: complex
+    ):
+        """
+        Test splitting vacuum ray power into O and X mode fractions.
+
+        A polarisation cos(angle) e_O + phase sin(angle) e_X, with
+        |phase| = 1, carries power fractions cos(angle)**2 and
+        sin(angle)**2.
+
+        Parameters
+        ----------
+        ray : Ray
+            Ray.
+        n : list
+            Refractive index.
+        angle : float
+            Mixing angle between O and X polarisations.
+        phase : complex
+            Relative phase factor of the X polarisation.
+        """
+        ray.set_frequency(10.0)
+        ray.set_xn_position([1.0, 0.0, 0.0], n)
+        ray.calculate_hamiltonian(derivatives=2, determinant=True)
+        assert ray.plasma_cache.vacuum
+
+        arguments = ray.hamiltonian_cache.arguments.value
+        e_o, e_x = (
+            vacuum_stix_polarisation(
+                arguments[Dimensions.IDX_Y],
+                arguments[Dimensions.IDX_N_PERP],
+                arguments[Dimensions.IDX_N_PARALLEL],
+                mode,
+            )
+            for mode in (WaveMode.O, WaveMode.X)
+        )
+        nptest.assert_allclose(np.vdot(e_o, e_x), 0.0, atol=1e-12)
+
+        ray.set_polarisation_stix(
+            np.cos(angle) * e_o + phase * np.sin(angle) * e_x
+        )
+        o_mode, x_mode = ray.vacuum_power_fraction_in_ox()
+
+        nptest.assert_allclose(o_mode, np.cos(angle) ** 2, atol=1e-12)
+        nptest.assert_allclose(x_mode, np.sin(angle) ** 2, atol=1e-12)
 
 
 class TestRayTracingOutput:
