@@ -2347,10 +2347,14 @@ class RayTracer:
 
         return (h_saddle, xk_saddle, pq_saddle, pq_conversion_normal)
 
-    def _ray_flow_pq(self, xk: FloatArray) -> FloatArray:
+    def _ray_flow_pq(self, xk: FloatArray) -> tuple[FloatArray, int]:
         """
         Ray velocity in phase space at a point, projected onto the
-        osculating plane.
+        osculating plane, and which eigenvalue of the dispersion tensor the
+        ray follows there.
+
+        Moves the ray to the point and recalculates its Hamiltonian, so the
+        Hamiltonian and polarisation caches are left at the point.
 
         Parameters
         ----------
@@ -2361,7 +2365,13 @@ class RayTracer:
         -------
         pq_flow : np.array[float]
             Osculating plane coordinates (p, q) of the phase space velocity
-            J grad(H) of the ray Hamiltonian (the smallest eigenvalue).
+            J grad(H) of the ray Hamiltonian H, the eigenvalue of the
+            dispersion tensor selected by the polarisation (the smallest in
+            magnitude unless two are close, when the previous polarisation
+            decides).
+        branch : int
+            Index, in ascending order, of the eigenvalue of the dispersion
+            tensor closest to zero.
         """
         self.ray.set_xk_position(xk[_x], xk[_k])
         self.ray.calculate_hamiltonian(derivatives=1, determinant=False)
@@ -2370,11 +2380,15 @@ class RayTracer:
             SYMPLECTIC_MATRIX_J6,
             self.ray.hamiltonian_cache.eigenvalue.first_derivative.z[_xk],
         )
-        return np.linalg.lstsq(
+        pq_flow = np.linalg.lstsq(
             self._mode_conversion_cache.xk_osculating_plane.T,
             xk_flow,
             rcond=None,
         )[0]
+        eigenvalues = np.linalg.eigvalsh(
+            self.ray.hamiltonian_cache.dispersion_tensor.hermitian.value
+        )
+        return pq_flow, int(np.argmin(np.abs(eigenvalues)))
 
     def _find_reflected_ray(
         self,
@@ -2396,8 +2410,13 @@ class RayTracer:
         osculating plane, whose zero set is two lines (asymptotes). The
         incoming and converted rays lie along one, close to the conversion
         axis. The unconverted ray leaves along the other, on the end where
-        the ray flows away from the saddle point. Start on that end as far
-        from the saddle as the matching point is, and project onto H = 0.
+        the ray flows away from the saddle point, and on the same eigenvalue
+        of the dispersion tensor as the incoming ray (the converted ray
+        leaves on the other one of the pair). Start on that end as far from
+        the saddle as the matching point is, and project onto H = 0.
+
+        Moves the ray, so the Hamiltonian and polarisation caches are left
+        at the result.
 
         Parameters
         ----------
@@ -2423,7 +2442,7 @@ class RayTracer:
         Returns
         -------
         success : bool
-            If exactly one outgoing branch was found.
+            If exactly one outgoing end was found on an asymptote.
         """
         basis = self._mode_conversion_cache.xk_osculating_plane
         hessian = np.einsum("ai, ij, bj -> ab", basis, h_saddle_dxk2, basis)
@@ -2443,56 +2462,71 @@ class RayTracer:
             asymptotes = [
                 np.array([-h01 + sign * root, h00]) for sign in (1.0, -1.0)
             ]
+        if any(np.linalg.norm(u) == 0.0 for u in asymptotes):
+            return False
         asymptotes = [u / np.linalg.norm(u) for u in asymptotes]
 
-        # The other asymptote is the one further from the conversion axis.
-        u_out = min(
-            asymptotes, key=lambda u: abs(np.dot(u, pq_conversion_axis))
-        )
-        u_normal = np.array([-u_out[1], u_out[0]])
+        # Try the asymptote further from the conversion axis first. If the
+        # matching point is close to the saddle, the axis may be closer to
+        # the other one; the eigenvalue check below then rejects both ends
+        # of the conversion asymptote.
+        asymptotes.sort(key=lambda u: abs(np.dot(u, pq_conversion_axis)))
 
-        # Orientation of the ray flow: on the incoming ray it points from the
-        # matching point towards the saddle point.
-        orientation = np.sign(
-            np.dot(self._ray_flow_pq(xk_matching), pq_saddle - pq_matching)
-        )
-
-        distance = np.linalg.norm(pq_saddle - pq_matching)
-        outgoing = []
-        xk_candidate = np.empty_like(xk_reflected)
-        for sign in (1.0, -1.0):
-            xk_start = xk_saddle + distance * sign * np.matmul(basis.T, u_out)
-            if not self._osculating_plane_root_search_1d(
-                xk_start,
-                np.matmul(basis.T, u_normal),
-                xk_candidate,
-                0.0,
-                max_attempts=MAX_ATTEMPTS,
-                target=0.0,
-                threshold=threshold,
-            ):
-                continue
-            pq_away = np.linalg.lstsq(
-                basis.T, xk_candidate - xk_saddle, rcond=None
-            )[0]
-            flow = orientation * self._ray_flow_pq(xk_candidate)
-            logger.info(
-                "Unconverted ray candidate %s: flow away from saddle %.3e",
-                np.array2string(xk_candidate, precision=3, floatmode="fixed"),
-                np.dot(flow, pq_away),
-            )
-            if np.dot(flow, pq_away) > 0.0:
-                outgoing.append(xk_candidate.copy())
-
-        if len(outgoing) != 1:
+        # On the incoming ray the flow points from the matching point
+        # towards the saddle point.
+        pq_flow, branch = self._ray_flow_pq(xk_matching)
+        orientation = np.sign(np.dot(pq_flow, pq_saddle - pq_matching))
+        if orientation == 0.0:
             return False
 
-        xk_reflected[:] = outgoing[0]
+        distance = np.linalg.norm(pq_saddle - pq_matching)
+        xk_candidate = np.empty_like(xk_reflected)
+        for u_out in asymptotes:
+            u_normal = np.array([-u_out[1], u_out[0]])
+            outgoing = []
+            for sign in (1.0, -1.0):
+                xk_start = xk_saddle + distance * sign * np.matmul(
+                    basis.T, u_out
+                )
+                if not self._osculating_plane_root_search_1d(
+                    xk_start,
+                    np.matmul(basis.T, u_normal),
+                    xk_candidate,
+                    0.0,
+                    max_attempts=MAX_ATTEMPTS,
+                    target=0.0,
+                    threshold=threshold,
+                ):
+                    continue
+                pq_away = np.linalg.lstsq(
+                    basis.T, xk_candidate - xk_saddle, rcond=None
+                )[0]
+                pq_flow, candidate_branch = self._ray_flow_pq(xk_candidate)
+                flow_away = orientation * np.dot(pq_flow, pq_away)
+                logger.info(
+                    "Unconverted ray candidate %s: flow away from saddle "
+                    "%.3e, eigenvalue %d (incoming %d)",
+                    np.array2string(
+                        xk_candidate, precision=3, floatmode="fixed"
+                    ),
+                    flow_away,
+                    candidate_branch,
+                    branch,
+                )
+                if flow_away > 0.0 and candidate_branch == branch:
+                    outgoing.append(xk_candidate.copy())
 
-        # Leave the ray's Hamiltonian evaluated at the result.
-        self.ray.set_xk_position(xk_reflected[_x], xk_reflected[_k])
-        self.ray.calculate_hamiltonian(derivatives=1, determinant=True)
-        return True
+            if len(outgoing) == 1:
+                xk_reflected[:] = outgoing[0]
+
+                # Leave the ray's Hamiltonian evaluated at the result.
+                self.ray.set_xk_position(xk_reflected[_x], xk_reflected[_k])
+                self.ray.calculate_hamiltonian(
+                    derivatives=1, determinant=True
+                )
+                return True
+
+        return False
 
     def _osculating_plane_root_search_1d(
         self,
@@ -2834,13 +2868,9 @@ class RayTracer:
                 threshold=threshold,
             )
 
-            if not _success:
-                self.ray.set_stop_condition(
-                    "Unable to find the outgoing branch of the unconverted "
-                    "ray"
-                )
-                return
-
+            # If it can't be found, keep the converted ray but stop this one
+            # once the converted power has been removed from it.
+            unconverted_found = _success
             t_unconverted = t_converted
         else:
             # Otherwise just take a step away from mode conversion region.
@@ -2854,11 +2884,15 @@ class RayTracer:
             t_unconverted = self.integrator.t
             xk_unconverted[_x] = self.integrator.y[_x]
             xk_unconverted[_k] = self.integrator.y[_k]
+            unconverted_found = True
 
-        logger.info(
-            "Found unconverted ray (x, k): %s",
-            np.array2string(xk_unconverted, precision=3, floatmode="fixed"),
-        )
+        if unconverted_found:
+            logger.info(
+                "Found unconverted ray (x, k): %s",
+                np.array2string(
+                    xk_unconverted, precision=3, floatmode="fixed"
+                ),
+            )
 
         # Find coupling constant.
         use_mjolhus = True
@@ -2973,6 +3007,12 @@ class RayTracer:
         self.ray.state.increment_optical_depth_external(
             -np.log(max(1.0e-100, 1 - transmission))
         )
+
+        if not unconverted_found:
+            self.ray.set_stop_condition(
+                "Unable to find the outgoing branch of the unconverted ray"
+            )
+            return
 
         # Re-initialise integrator at the start of the unconverted ray.
         self.ray.set_time(t_unconverted)

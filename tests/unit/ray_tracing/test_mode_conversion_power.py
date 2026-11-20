@@ -198,8 +198,8 @@ class TestModeConversionPower:
         """
         Test that the single O mode ray of the slab OXB case, launched close
         to the optimal parallel refractive index, converts once and is then
-        reflected: it has exactly one converted child, and it never reaches
-        densities above its cutoff, X = 1.
+        reflected: it has exactly one converted child, it never reaches
+        densities above its cutoff, X = 1, and it ends outside the plasma.
 
         Parameters
         ----------
@@ -233,6 +233,10 @@ class TestModeConversionPower:
             density = np.ravel(
                 data["ray_1-0"]["normalised_electron_density"][:]
             )
+            k_x = np.reshape(data["ray_1-0"]["wavevector"][:], (-1, 3))[:, 0]
 
         assert children == ["ray_1-0-0"]
         assert np.max(density) < 1.01  # noqa: PLR2004
+        # It leaves the plasma (towards smaller x) through the limiter.
+        assert k_x[-1] < 0.0
+        assert density[-1] < 1e-3  # noqa: PLR2004
