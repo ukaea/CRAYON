@@ -2742,15 +2742,14 @@ class RayTracer:
             # If single ray use transmission for a beam.
             # Otherwise if a ray bundle use transmission for a plane wave.
             if self.ray.bundle:
-                tau_transmission = mjolhus_plane_wave(
-                    self.ray.wave_cache.vacuum_wavenumber_per_m,
+                transmission = mjolhus_plane_wave(
                     self._mode_conversion_cache.k0ln_saddle,
                     self._mode_conversion_cache.y_saddle,
                     self._mode_conversion_cache.n_parallel,
                     self._mode_conversion_cache.n_y,
                 )
             else:
-                tau_transmission = mjolhus_gaussian_beam(
+                transmission = mjolhus_gaussian_beam(
                     self._mode_conversion_cache.k0ln_saddle,
                     self._mode_conversion_cache.y_saddle,
                     self._mode_conversion_cache.n_parallel,
@@ -2816,8 +2815,8 @@ class RayTracer:
             tau_transmission = 2 * np.pi * abs(eta_norm * np.conj(eta_norm))
             phase_shift = 0.0
 
-        # Find transmission coefficient of new wave.
-        transmission = np.exp(-tau_transmission)
+            # Find transmission coefficient of new wave.
+            transmission = np.exp(-tau_transmission)
 
         # Discard converted ray if predicted power transfer is too low.
         logger.info("Transmission = %s", np.round(transmission, 3))
@@ -2840,7 +2839,7 @@ class RayTracer:
             self.ray.state.adiabatic_phase_rad,
             self.ray.hamiltonian_cache.polarisation.stix.value,
             other_mode,
-            transmission * self.ray.state.initial_power_w,
+            transmission * self.ray.state.power_w,
             transmission * intensity_w_per_m2,
         )
 

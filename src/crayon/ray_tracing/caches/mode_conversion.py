@@ -31,8 +31,8 @@ def mjolhus_plane_wave(
     n_y: float,
 ) -> float:
     """
-    Calculate transmission exponent for OX conversion from a plane wave given
-    by Mjolhus [1].
+    Calculate the transmission (fraction of power converted) for OX conversion
+    of a plane wave, T = exp(-A), with A the exponent given by Mjolhus [1].
 
     Parameters
     ----------
@@ -49,8 +49,8 @@ def mjolhus_plane_wave(
 
     Returns
     -------
-    transmission_exponent : float
-        Exponent of the transmission factor.
+    transmission : float
+        Fraction of power converted, 0 <= T <= 1.
 
     References
     ----------
@@ -61,12 +61,14 @@ def mjolhus_plane_wave(
     y = normalised_magnetic_field_strength
     npar_opt = np.sqrt(y / (1 + y))
 
-    return (
+    transmission_exponent = (
         np.pi
         * k0ln
         * np.sqrt(0.5 * y)
         * (2.0 * (1 + y) * np.square(abs(n_parallel) - npar_opt) + n_y * n_y)
     )
+
+    return np.exp(-transmission_exponent)
 
 
 def mjolhus_gaussian_beam(
@@ -97,10 +99,13 @@ def mjolhus_gaussian_beam(
 
     Returns
     -------
-    transmission_exponent : float
-        Exponent of the transmission factor.
+    transmission : float
+        Fraction of power converted, 0 <= T <= 1. Tends to
+        mjolhus_plane_wave as the waist tends to infinity.
     """
     y = normalised_magnetic_field_strength
+    # Like the plane wave formula, depends on |N_parallel| only.
+    n_parallel = abs(n_parallel)
     npar_opt = np.sqrt(y / (1 + y))
 
     w_norm = 0.5 * np.square(normalised_beam_waist_radius)
