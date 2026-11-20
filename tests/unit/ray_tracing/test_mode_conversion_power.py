@@ -188,29 +188,61 @@ class TestModeConversionPower:
             )
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("fidelity", "n_parallel"),
+        [("HIGH", 0.655), ("MEDIUM", 0.6546), ("MEDIUM", 0.6544)],
+    )
     @pytest.mark.xfail(
         raises=AssertionError,
         strict=True,
-        reason="Known: at HIGH fidelity the O mode ray converts twice.",
+        reason="Known: near the optimal n_parallel the O mode ray converts "
+        "twice or goes through its cutoff.",
     )
-    def test_conversion_happens_once(tmp_path: pathlib.Path):
+    def test_conversion_happens_once(
+        tmp_path: pathlib.Path, fidelity: str, n_parallel: float
+    ):
         """
-        Test that the single O mode ray of the slab OXB case passes the
-        conversion layer once, so it has exactly one converted child.
+        Test that the single O mode ray of the slab OXB case, launched close
+        to the optimal parallel refractive index, converts once and is then
+        reflected: it has exactly one converted child, it never reaches
+        densities above its cutoff, X = 1, and it ends outside the plasma.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Run directory.
+        fidelity : str
+            Fidelity option.
+        n_parallel : float
+            Launch parallel refractive index.
         """
         rays_file = run_oxb(
             tmp_path,
-            [("options.toml", 'fidelity = "MEDIUM"', 'fidelity = "HIGH"')],
+            [
+                (
+                    "options.toml",
+                    'fidelity = "MEDIUM"',
+                    f'fidelity = "{fidelity}"',
+                ),
+                (
+                    "rays.toml",
+                    "n_parallel = 0.655",
+                    f"n_parallel = {n_parallel}",
+                ),
+            ],
         )
 
         with nc4.Dataset(rays_file) as data:
             children = [
                 name for name in data.groups if name.startswith("ray_1-0-")
             ]
+            density = np.ravel(
+                data["ray_1-0"]["normalised_electron_density"][:]
+            )
+            k_x = np.reshape(data["ray_1-0"]["wavevector"][:], (-1, 3))[:, 0]
 
         assert children == ["ray_1-0-0"]
+        assert np.max(density) < 1.01  # noqa: PLR2004
+        # It leaves the plasma (towards smaller x) through the limiter.
+        assert k_x[-1] < 0.0
+        assert density[-1] < 1e-3  # noqa: PLR2004
